@@ -1,0 +1,47 @@
+# Publica la plataforma en InfinityFree por FTP.
+# Se ejecuta en cada push a la rama main y también a mano desde
+# GitHub > Actions > "Desplegar en InfinityFree" > Run workflow.
+#
+# Solo sube los archivos que cambiaron. Nunca toca config/config.php
+# ni las capturas que suben los estudiantes, porque no están en el repositorio.
+
+name: Desplegar en InfinityFree
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-infinityfree
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Revisar sintaxis PHP
+        run: |
+          find . -name "*.php" -not -path "./lib/*" -print0 | xargs -0 -n1 php -l > /dev/null
+
+      - name: Subir por FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          server-dir: ${{ secrets.FTP_DIR }}
+          protocol: ftp
+          port: 21
+          exclude: |
+            **/.git*
+            **/.git*/**
+            .github/**
+            docs/**
+            README.md
+            DEPLOY.md
+            config/config.php
+            storage/uploads/20*/**

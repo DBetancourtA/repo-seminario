@@ -1,0 +1,17 @@
+# Credenciales: cada servidor tiene su propio config.php
+config/config.php
+
+# Archivos que suben los usuarios y registros
+storage/uploads/*
+!storage/uploads/.gitkeep
+!storage/uploads/.htaccess
+storage/logs/*
+!storage/logs/.gitkeep
+
+# Sistema / editores
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.zip

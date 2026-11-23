@@ -1,0 +1,9 @@
+# Si el hosting no permite apuntar el dominio a /public, este archivo
+# redirige todo a public/ y bloquea el acceso directo a las demás carpetas.
+Options -Indexes
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^(app|config|database|lib|storage)(/|$) - [F,L]
+  RewriteCond %{REQUEST_URI} !/public/
+  RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
