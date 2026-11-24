@@ -101,3 +101,4 @@ Si ya tenías la plataforma instalada antes de la función de cambios, ejecuta u
 
 ## 7. Respaldo
 Haz respaldo de la base (`mysqldump seminario > respaldo.sql`) y de la carpeta `storage/uploads/`.
+# repo-seminario
