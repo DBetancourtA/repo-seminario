@@ -125,9 +125,24 @@ function tablero(): void
         'esperadas'   => $esperadas,
         'pendientes'  => $pendientes,
         'solicitudes' => $solicitudes,
+        'entLista'    => Entregables::deConvocatoria($conv),
+        'entMatriz'   => entregas_matriz($cid),
         'inactivos'   => $inactivos,
         'sinProyecto' => $sinProyecto,
     ]);
+}
+
+/** proyecto_id => [entregable_id => entrega] para el tablero. */
+function entregas_matriz(int $cid): array
+{
+    if (!Entregables::disponible()) {
+        return [];
+    }
+    $out = [];
+    foreach (DB::all('SELECT en.* FROM entregas en JOIN proyectos p ON p.id = en.proyecto_id WHERE p.convocatoria_id = ?', [$cid]) as $e) {
+        $out[(int)$e['proyecto_id']][(int)$e['entregable_id']] = $e;
+    }
+    return $out;
 }
 
 function convocatorias(): void
@@ -246,6 +261,8 @@ function convocatoriaVer(): void
         [$c['id']]
     );
     view('admin/convocatoria_ver', [
+        'entLista'    => Entregables::deConvocatoria($c),
+        'entDisponible' => Entregables::disponible(),
         'titulo'      => $c['nombre'],
         'c'           => $c,
         'weeks'       => Calendar::weeks((int)$c['id']),
@@ -344,6 +361,8 @@ function proyectoVer(): void
         'semanaSel' => input_int('semana', max(1, Calendar::currentWeek((int)$conv['id']))),
         'pendientes'=> Cambios::pendientes((int)$p['id']),
         'cambios'   => Cambios::registro((int)$p['id']),
+        'entLista'  => Entregables::deConvocatoria($conv),
+        'entregas'  => Entregables::entregasDe((int)$p['id']),
     ]);
 }
 
@@ -832,4 +851,90 @@ function usuariosExportar(): void
         ], ';');
     }
     fclose($out);
+}
+
+/* =====================  ENTREGABLES  ===================== */
+
+function entregaRevisar(): void
+{
+    $admin = Auth::requireRole('admin');
+    if (!is_post()) {
+        abort(405);
+    }
+    $e = DB::one('SELECT en.*, et.nombre FROM entregas en JOIN entregables et ON et.id = en.entregable_id WHERE en.id = ?', [input_int('id')]);
+    if (!$e) {
+        abort(404);
+    }
+    $accion = input('accion');
+    $comentario = trim((string)input('comentario'));
+    if ($accion === 'sin_acceso') {
+        $estado = 'observado';
+        $correo = (string) cfg('app.correo_docente', '');
+        $comentario = 'No tengo acceso al archivo. Compártelo' . ($correo ? " con {$correo}" : ' conmigo') . ' como Lector y vuelve a guardar el enlace.' . ($comentario ? ' ' . $comentario : '');
+    } elseif ($accion === 'observar') {
+        if (mb_strlen($comentario) < 5) {
+            flash('warn', 'Escribe qué debe corregir en «' . $e['nombre'] . '».');
+            header('Location: ' . url('admin/proyecto', ['id' => $e['proyecto_id']]) . '#entregables');
+            exit;
+        }
+        $estado = 'observado';
+    } elseif ($accion === 'aprobar') {
+        $estado = 'aprobado';
+    } elseif ($accion === 'reabrir') {
+        $estado = 'entregado';
+    } else {
+        abort(400);
+    }
+    DB::run('UPDATE entregas SET estado = ?, comentario = ?, revisado_at = NOW(), revisado_por = ? WHERE id = ?',
+        [$estado, $comentario ?: null, $admin['id'], $e['id']]);
+    flash('ok', '«' . $e['nombre'] . '»: ' . Entregables::estadoLabel($estado) . '.');
+    header('Location: ' . url('admin/proyecto', ['id' => $e['proyecto_id']]) . '#entregables');
+    exit;
+}
+
+function entregablesConfig(): void
+{
+    Auth::requireRole('admin');
+    if (!is_post() || !Entregables::disponible()) {
+        abort(405);
+    }
+    $conv = DB::one('SELECT * FROM convocatorias WHERE id = ?', [input_int('conv')]);
+    if (!$conv) {
+        abort(404);
+    }
+    $accion = input('accion');
+    $volver = url('admin/convocatoria/ver', ['id' => $conv['id']]) . '#entregables';
+    $nombre = mb_substr(trim((string)input('nombre')), 0, 120);
+    $desc = mb_substr(trim((string)input('descripcion')), 0, 255);
+    $semana = max(1, min((int)$conv['semanas'], input_int('semana', 1)));
+    $tipo = array_key_exists(input('tipo'), Entregables::TIPOS) ? input('tipo') : 'documento';
+
+    if ($accion === 'crear' || $accion === 'guardar') {
+        if (mb_strlen($nombre) < 3) {
+            flash('warn', 'Escribe el nombre del entregable.');
+            header('Location: ' . $volver);
+            exit;
+        }
+    }
+    if ($accion === 'crear') {
+        Entregables::asegurar($conv);
+        $orden = (int) DB::value('SELECT COALESCE(MAX(orden), 0) + 1 FROM entregables WHERE convocatoria_id = ?', [$conv['id']]);
+        DB::run('INSERT INTO entregables (convocatoria_id, nombre, descripcion, semana, tipo, orden) VALUES (?,?,?,?,?,?)',
+            [$conv['id'], $nombre, $desc ?: null, $semana, $tipo, $orden]);
+        flash('ok', 'Entregable agregado.');
+    } elseif ($accion === 'guardar') {
+        DB::run('UPDATE entregables SET nombre = ?, descripcion = ?, semana = ?, tipo = ? WHERE id = ? AND convocatoria_id = ?',
+            [$nombre, $desc ?: null, $semana, $tipo, input_int('id'), $conv['id']]);
+        flash('ok', 'Entregable actualizado.');
+    } elseif ($accion === 'eliminar') {
+        $n = (int) DB::value('SELECT COUNT(*) FROM entregas WHERE entregable_id = ?', [input_int('id')]);
+        if ($n > 0) {
+            flash('warn', "No se puede eliminar: ya tiene {$n} entrega(s). Cámbiale el nombre o la semana.");
+        } else {
+            DB::run('DELETE FROM entregables WHERE id = ? AND convocatoria_id = ?', [input_int('id'), $conv['id']]);
+            flash('ok', 'Entregable eliminado.');
+        }
+    }
+    header('Location: ' . $volver);
+    exit;
 }

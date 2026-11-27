@@ -25,6 +25,8 @@ $routes = [
     'tecnologias'           => ['estudiante', 'tecnologias'],
     'avance'                => ['estudiante', 'avance'],
     'semana'                => ['estudiante', 'semana'],
+    'entregables'           => ['estudiante', 'entregables'],
+    'entrega'               => ['estudiante', 'entregar'],
 
     'admin'                 => ['admin', 'tablero'],
     'admin/convocatorias'   => ['admin', 'convocatorias'],
@@ -42,6 +44,8 @@ $routes = [
     'admin/captura/borrar'  => ['admin', 'capturaBorrarAdmin'],
     'admin/estudiante/clave'=> ['admin', 'restablecerClave'],
     'admin/usuarios'        => ['admin', 'usuarios'],
+    'admin/entrega'         => ['admin', 'entregaRevisar'],
+    'admin/entregables'     => ['admin', 'entregablesConfig'],
     'admin/usuario'         => ['admin', 'usuarioEditar'],
     'admin/usuario/estado'  => ['admin', 'usuarioEstado'],
     'admin/usuario/convocatoria' => ['admin', 'usuarioConvocatoria'],

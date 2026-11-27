@@ -131,6 +131,37 @@ $maxEstado = max(1, ...array_values($porEstado ?: [0]));
   </aside>
 </div>
 
+<?php if ($entLista && $proys):
+  $abbr = fn($n) => mb_strtoupper(implode('', array_map(fn($w) => mb_substr($w, 0, 1), array_slice(array_filter(explode(' ', $n), fn($w) => mb_strlen($w) > 2), 0, 2))));
+  $vencidos = 0;
+?>
+<section class="section" aria-labelledby="h-entm">
+  <div class="section-head"><h2 id="h-entm">Entregables</h2><span class="meta">✓ aprobado · ● por revisar · ! observado · ✕ vencido</span></div>
+  <div class="table-wrap" style="padding:12px">
+    <table class="heat ent-matrix">
+      <thead><tr><th scope="col" class="who">Estudiante</th>
+        <?php foreach ($entLista as $en): ?><th scope="col" title="<?= e($en['nombre']) ?> · semana <?= (int)$en['semana'] ?>"><?= e($abbr($en['nombre'])) ?><br><span class="muted">S<?= (int)$en['semana'] ?></span></th><?php endforeach; ?>
+      </tr></thead>
+      <tbody>
+      <?php foreach ($proys as $pr): ?>
+        <tr><th scope="row" class="who"><a href="<?= e(url('admin/proyecto', ['id' => $pr['id']])) ?>#entregables" style="color:var(--ink)"><?= e($pr['apellidos'] . ', ' . explode(' ', $pr['nombres'])[0]) ?></a></th>
+        <?php foreach ($entLista as $en):
+          $x = $entMatriz[(int)$pr['id']][(int)$en['id']] ?? null;
+          $st = Entregables::estado($x, $conv, $en);
+          if ($st === 'vencido') $vencidos++;
+          [$cls, $sym] = ['aprobado' => ['h3', '✓'], 'entregado' => ['h2', '●'], 'observado' => ['h1', '!'], 'vencido' => ['h0', '✕'], 'pendiente' => ['hn', '']][$st];
+        ?>
+          <td class="<?= $cls ?>" title="<?= e($en['nombre'] . ': ' . Entregables::estadoLabel($st)) ?>"><?= $sym ?></td>
+        <?php endforeach; ?>
+        </tr>
+      <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+  <?php if ($vencidos): ?><p class="help" style="margin-top:8px"><?= $vencidos ?> entrega<?= $vencidos === 1 ? '' : 's' ?> vencida<?= $vencidos === 1 ? '' : 's' ?> sin enlace.</p><?php endif; ?>
+</section>
+<?php endif; ?>
+
 <section class="section" aria-labelledby="h-heat">
   <div class="section-head"><h2 id="h-heat">Cumplimiento de la bitácora</h2><span class="meta">clases registradas / clases ya dictadas, por semana</span></div>
   <?php if (!$proys): ?>

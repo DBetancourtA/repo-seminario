@@ -65,6 +65,18 @@ final class DB
         return $cache[$k];
     }
 
+    public static function hasTable(string $table): bool
+    {
+        static $cache = [];
+        if (!array_key_exists($table, $cache)) {
+            $cache[$table] = (bool) self::value(
+                'SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?',
+                [$table]
+            );
+        }
+        return $cache[$table];
+    }
+
     public static function tx(callable $fn)
     {
         $pdo = self::pdo();

@@ -527,3 +527,58 @@ function semana(): void
         'disp'     => Report::availability($sesiones, $avances),
     ]);
 }
+
+/* =====================  ENTREGABLES  ===================== */
+
+function entregables(): void
+{
+    [$u, $conv, $p] = contexto_estudiante();
+    view('estudiante/entregables', [
+        'titulo'     => 'Entregables',
+        'conv'       => $conv,
+        'p'          => $p,
+        'disponible' => Entregables::disponible(),
+        'lista'      => Entregables::deConvocatoria($conv),
+        'entregas'   => $p ? Entregables::entregasDe((int)$p['id']) : [],
+        'editable'   => $p && Entregables::editablePorEstudiante($p),
+    ]);
+}
+
+function entregar(): void
+{
+    if (!is_post()) {
+        abort(405);
+    }
+    [$u, $conv, $p] = contexto_estudiante();
+    if (!Entregables::disponible()) {
+        abort(404);
+    }
+    if (!$p || !Entregables::editablePorEstudiante($p)) {
+        flash('info', 'Podrás entregar cuando tu proyecto esté aprobado.');
+        redirect('entregables');
+    }
+    $ent = DB::one('SELECT * FROM entregables WHERE id = ? AND convocatoria_id = ?', [input_int('entregable_id'), $conv['id']]);
+    if (!$ent) {
+        abort(404);
+    }
+    $actual = DB::one('SELECT * FROM entregas WHERE proyecto_id = ? AND entregable_id = ?', [$p['id'], $ent['id']]);
+    if ($actual && $actual['estado'] === 'aprobado') {
+        flash('info', '«' . $ent['nombre'] . '» ya fue aprobado; si necesitas cambiarlo, pídeselo al docente.');
+        redirect('entregables');
+    }
+    $url = trim((string)input('url'));
+    if ($m = Entregables::validarUrl($url, $ent['tipo'])) {
+        set_errors(['url_' . $ent['id'] => $m]);
+        keep_old(['url_' . $ent['id'] => $url]);
+        header('Location: ' . url('entregables') . '#ent-' . $ent['id']);
+        exit;
+    }
+    if ($actual) {
+        DB::run("UPDATE entregas SET url = ?, estado = 'entregado', entregado_at = NOW() WHERE id = ?", [$url, $actual['id']]);
+    } else {
+        DB::run('INSERT INTO entregas (proyecto_id, entregable_id, url) VALUES (?,?,?)', [$p['id'], $ent['id'], $url]);
+    }
+    flash('ok', '«' . $ent['nombre'] . '» entregado. Recuerda compartirlo con tu docente.');
+    header('Location: ' . url('entregables') . '#ent-' . $ent['id']);
+    exit;
+}

@@ -28,6 +28,8 @@ $sesionesSel = $weeks[$semanaSel] ?? [];
     </section>
     <?php endif; ?>
 
+    <?php if ($entLista) partial('entregables_admin', ['lista' => $entLista, 'entregas' => $entregas, 'conv' => $conv]); ?>
+
     <section class="section" aria-labelledby="h-bit" id="bitacora">
       <div class="section-head"><h2 id="h-bit">Bitácora</h2><span class="meta"><?= count($avances) ?> clases registradas</span></div>
       <nav class="week-nav" aria-label="Semanas" style="margin-bottom:16px">

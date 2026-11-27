@@ -4,7 +4,7 @@ $route = trim((string)($_GET['r'] ?? ''), '/');
 $isAdmin = $u && $u['rol'] === 'admin';
 $navItems = $isAdmin
     ? ['admin' => 'Tablero', 'admin/proyectos' => 'Proyectos', 'admin/convocatorias' => 'Convocatorias', 'admin/usuarios' => 'Usuarios', 'admin/tecnologias' => 'Tecnologías']
-    : ['panel' => 'Mi seminario', 'proyecto' => 'Mi proyecto', 'tecnologias' => 'Tecnologías'];
+    : ['panel' => 'Mi seminario', 'proyecto' => 'Mi proyecto', 'entregables' => 'Entregables', 'tecnologias' => 'Tecnologías'];
 $active = function (string $key) use ($route): bool {
     if ($route === $key) return true;
     return $key !== 'admin' && $key !== 'panel' && str_starts_with($route, $key);

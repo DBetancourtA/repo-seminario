@@ -51,6 +51,44 @@
   <?php endif; ?>
 </section>
 
+<section class="section" aria-labelledby="h-entc" id="entregables">
+  <div class="section-head"><h2 id="h-entc">Entregables</h2><span class="meta">Los estudiantes entregan un enlace por cada uno</span></div>
+  <?php if (!$entDisponible): ?>
+    <div class="note">Ejecuta <span class="mono">database/migracion_003_entregables.sql</span> en phpMyAdmin para activar los entregables.</div>
+  <?php else: ?>
+  <div class="ses-week">
+    <?php foreach ($entLista as $en): ?>
+      <form class="ent-row" method="post" action="<?= e(url('admin/entregables')) ?>">
+        <?= csrf_field() ?><input type="hidden" name="conv" value="<?= (int)$c['id'] ?>"><input type="hidden" name="id" value="<?= (int)$en['id'] ?>">
+        <label class="sr-only" for="en-n-<?= (int)$en['id'] ?>">Nombre</label>
+        <input class="input" id="en-n-<?= (int)$en['id'] ?>" name="nombre" maxlength="120" value="<?= e($en['nombre']) ?>">
+        <label class="sr-only" for="en-d-<?= (int)$en['id'] ?>">Descripción</label>
+        <input class="input" id="en-d-<?= (int)$en['id'] ?>" name="descripcion" maxlength="255" placeholder="Descripción" value="<?= e($en['descripcion']) ?>">
+        <label class="sr-only" for="en-s-<?= (int)$en['id'] ?>">Semana</label>
+        <select class="select" id="en-s-<?= (int)$en['id'] ?>" name="semana"><?php for ($w = 1; $w <= (int)$c['semanas']; $w++): ?><option value="<?= $w ?>"<?= (int)$en['semana'] === $w ? ' selected' : '' ?>>Semana <?= $w ?></option><?php endfor; ?></select>
+        <label class="sr-only" for="en-t-<?= (int)$en['id'] ?>">Tipo</label>
+        <select class="select" id="en-t-<?= (int)$en['id'] ?>" name="tipo"><?php foreach (Entregables::TIPOS as $k => $l): ?><option value="<?= $k ?>"<?= $en['tipo'] === $k ? ' selected' : '' ?>><?= e(explode(' (', $l)[0]) ?></option><?php endforeach; ?></select>
+        <button class="btn btn-sm" type="submit" name="accion" value="guardar">Guardar</button>
+        <button class="linkbtn" type="submit" name="accion" value="eliminar" aria-label="Eliminar <?= e($en['nombre']) ?>" title="Eliminar"><?= icon('x', 16) ?></button>
+      </form>
+    <?php endforeach; ?>
+    <form class="ent-row ent-new" method="post" action="<?= e(url('admin/entregables')) ?>">
+      <?= csrf_field() ?><input type="hidden" name="conv" value="<?= (int)$c['id'] ?>">
+      <label class="sr-only" for="en-nn">Nuevo entregable</label>
+      <input class="input" id="en-nn" name="nombre" maxlength="120" placeholder="Nuevo entregable">
+      <label class="sr-only" for="en-nd">Descripción</label>
+      <input class="input" id="en-nd" name="descripcion" maxlength="255" placeholder="Descripción (opcional)">
+      <label class="sr-only" for="en-ns">Semana</label>
+      <select class="select" id="en-ns" name="semana"><?php for ($w = 1; $w <= (int)$c['semanas']; $w++): ?><option value="<?= $w ?>"><?= 'Semana ' . $w ?></option><?php endfor; ?></select>
+      <label class="sr-only" for="en-nt">Tipo</label>
+      <select class="select" id="en-nt" name="tipo"><?php foreach (Entregables::TIPOS as $k => $l): ?><option value="<?= $k ?>"><?= e(explode(' (', $l)[0]) ?></option><?php endforeach; ?></select>
+      <button class="btn btn-sm" type="submit" name="accion" value="crear"><?= icon('plus', 14) ?> Agregar</button>
+      <span></span>
+    </form>
+  </div>
+  <?php endif; ?>
+</section>
+
 <section class="section" aria-labelledby="h-cal">
   <div class="section-head"><h2 id="h-cal">Calendario de clases</h2><span class="meta">Cambia la fecha, ponle tema o suspende una clase (feriados).</span></div>
   <?php foreach ($weeks as $w => $ss): ?>

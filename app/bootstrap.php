@@ -43,6 +43,7 @@ require APP . '/Calendar.php';
 require APP . '/Upload.php';
 require APP . '/Repo.php';
 require APP . '/Cambios.php';
+require APP . '/Entregables.php';
 
 function cfg(string $key, $default = null)
 {

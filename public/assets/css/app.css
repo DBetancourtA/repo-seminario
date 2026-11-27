@@ -588,3 +588,30 @@ a.cell:hover { border-color: var(--ink); text-decoration: none; }
 
 /* Usuarios desactivados */
 .table tr.row-off td { opacity: .6; }
+
+/* ---------- Entregables ---------- */
+.deliverables { display: grid; gap: var(--s3); }
+.deliv { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: var(--s4) var(--s5); display: grid; gap: var(--s3); scroll-margin-top: 20px; }
+.deliv-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s3); }
+.deliv-head h2, .deliv-head h3 { font-size: 15px; font-weight: 600; }
+.deliv-vencido { border-left: 3px solid var(--danger); }
+.deliv-observado { border-left: 3px solid var(--warn); }
+.deliv-aprobado { border-left: 3px solid var(--ok); }
+.deliv-entregado { border-left: 3px solid var(--accent); }
+.share-help { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: var(--s3) var(--s4); margin-bottom: var(--s4); font-size: 14px; }
+.share-help summary { cursor: pointer; font-weight: 500; }
+.share-help ul { margin: var(--s3) 0 0; padding-left: 18px; display: grid; gap: 6px; color: var(--ink-2); }
+.preview summary { cursor: pointer; font-size: 14px; color: var(--accent); font-weight: 500; width: max-content; }
+.preview-frame { margin-top: var(--s2); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; background: var(--sunken); aspect-ratio: 4 / 3; max-height: 640px; }
+.preview-frame iframe { width: 100%; height: 100%; border: 0; display: block; }
+.review-row { display: flex; gap: var(--s2); flex-wrap: wrap; align-items: center; }
+.review-row .input { flex: 1; min-width: 200px; min-height: 36px; padding: 6px 10px; font-size: 14px; }
+.ent-row { display: grid; grid-template-columns: 1.3fr 1.6fr 120px 140px auto 36px; gap: var(--s2); align-items: center; padding: var(--s2) var(--s4); border-bottom: 1px solid var(--line); }
+.ent-row:last-child { border-bottom: 0; }
+.ent-row .input, .ent-row .select { min-height: 36px; padding: 6px 10px; font-size: 14px; }
+.ent-new { background: var(--paper); }
+.ent-matrix td { font-weight: 600; }
+.ent-matrix th:not(.who) { line-height: 1.2; }
+@media (max-width: 860px) {
+  .ent-row { grid-template-columns: 1fr 1fr; }
+}

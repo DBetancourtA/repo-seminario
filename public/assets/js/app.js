@@ -207,6 +207,14 @@
     if (field) setupRepoField(status, field);
   });
 
+  // Vista previa de entregables: el iframe carga solo al abrirla
+  document.querySelectorAll('details.preview[data-src]').forEach((d) => {
+    d.addEventListener('toggle', () => {
+      const f = d.querySelector('iframe');
+      if (d.open && f && !f.src) f.src = d.dataset.src;
+    });
+  });
+
   // Confirmación para acciones destructivas
   document.querySelectorAll('form[data-confirm]').forEach((f) => {
     f.addEventListener('submit', (e) => {
