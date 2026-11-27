@@ -585,3 +585,251 @@ function capturaBorrarAdmin(): void
     flash('ok', 'Captura eliminada.');
     redirect('admin/proyecto/editar', ['id' => $c['proyecto_id']]);
 }
+
+
+/** El docente genera una contraseña temporal para un estudiante. */
+function restablecerClave(): void
+{
+    $admin = Auth::requireRole('admin');
+    if (!is_post()) {
+        abort(405);
+    }
+    $est = DB::one("SELECT * FROM users WHERE id = ? AND rol = 'estudiante'", [input_int('user_id')]);
+    if (!$est) {
+        abort(404);
+    }
+    $temporal = 'Clave-' . random_code(4) . '-' . random_int(1000, 9999);
+    DB::run('UPDATE users SET password_hash = ? WHERE id = ?', [password_hash($temporal, PASSWORD_DEFAULT), $est['id']]);
+    DB::run('DELETE FROM login_intentos WHERE clave LIKE ?', [mb_strtolower($est['email']) . '|%']);
+
+    // Queda en el registro de cambios de su proyecto vigente (sin guardar la contraseña)
+    $pid = DB::value("SELECT id FROM proyectos WHERE user_id = ? ORDER BY (estado = 'rechazado'), id DESC LIMIT 1", [$est['id']]);
+    if ($pid) {
+        Cambios::registrar((int)$pid, 'clave', null, 'El docente restableció la contraseña', 'docente', 'aplicado', (int)$admin['id']);
+    }
+
+    $_SESSION['clave_temporal'] = [
+        'nombre' => $est['nombres'] . ' ' . $est['apellidos'],
+        'email'  => $est['email'],
+        'clave'  => $temporal,
+    ];
+    back();
+}
+
+/* =====================  USUARIOS  ===================== */
+
+/** Consulta base de usuarios con su convocatoria y proyecto vigentes. */
+function usuarios_query(array $f): array
+{
+    $ult = DB::hasColumn('users', 'ultimo_ingreso') ? 'u.ultimo_ingreso' : 'NULL';
+    $sql = "SELECT u.id, u.rol, u.nombres, u.apellidos, u.cedula, u.email, u.telefono, u.activo, u.created_at,
+                   $ult AS ultimo_ingreso,
+                   c.id AS conv_id, c.nombre AS conv_nombre, c.periodo AS conv_periodo,
+                   p.id AS pid, p.titulo, p.estado
+            FROM users u
+            LEFT JOIN inscripciones i ON i.id = (SELECT i2.id FROM inscripciones i2 WHERE i2.user_id = u.id ORDER BY i2.created_at DESC, i2.id DESC LIMIT 1)
+            LEFT JOIN convocatorias c ON c.id = i.convocatoria_id
+            LEFT JOIN proyectos p ON p.id = (SELECT p2.id FROM proyectos p2 WHERE p2.user_id = u.id AND p2.convocatoria_id = i.convocatoria_id
+                                             ORDER BY (p2.estado = 'rechazado'), p2.id DESC LIMIT 1)
+            WHERE 1 = 1";
+    $params = [];
+    if (($f['q'] ?? '') !== '') {
+        $sql .= ' AND (u.nombres LIKE ? OR u.apellidos LIKE ? OR u.cedula LIKE ? OR u.email LIKE ?)';
+        $like = '%' . $f['q'] . '%';
+        array_push($params, $like, $like, $like, $like);
+    }
+    if (!empty($f['conv'])) {
+        $sql .= ' AND c.id = ?';
+        $params[] = (int)$f['conv'];
+    }
+    if (in_array($f['rol'] ?? '', ['admin', 'estudiante'], true)) {
+        $sql .= ' AND u.rol = ?';
+        $params[] = $f['rol'];
+    }
+    switch ($f['estado'] ?? '') {
+        case 'activos':      $sql .= ' AND u.activo = 1'; break;
+        case 'desactivados': $sql .= ' AND u.activo = 0'; break;
+        case 'sin_proyecto': $sql .= " AND u.rol = 'estudiante' AND u.activo = 1 AND p.id IS NULL"; break;
+    }
+    $sql .= ' ORDER BY u.rol = "admin" DESC, u.activo DESC, u.apellidos, u.nombres';
+    return DB::all($sql, $params);
+}
+
+function usuarios(): void
+{
+    Auth::requireRole('admin');
+    $f = ['q' => input('q'), 'conv' => input_int('conv'), 'rol' => input('rol'), 'estado' => input('estado')];
+    $conteo = [
+        ''             => (int) DB::value('SELECT COUNT(*) FROM users'),
+        'activos'      => (int) DB::value('SELECT COUNT(*) FROM users WHERE activo = 1'),
+        'sin_proyecto' => count(usuarios_query(['estado' => 'sin_proyecto'])),
+        'desactivados' => (int) DB::value('SELECT COUNT(*) FROM users WHERE activo = 0'),
+    ];
+    view('admin/usuarios', [
+        'titulo' => 'Usuarios',
+        'rows'   => usuarios_query($f),
+        'f'      => $f,
+        'conteo' => $conteo,
+        'convs'  => DB::all('SELECT id, nombre, periodo FROM convocatorias ORDER BY fecha_inicio DESC'),
+        'hayUltimo' => DB::hasColumn('users', 'ultimo_ingreso'),
+    ]);
+}
+
+function usuarioEditar(): void
+{
+    $admin = Auth::requireRole('admin');
+    $u = DB::one('SELECT * FROM users WHERE id = ?', [input_int('id')]);
+    if (!$u) {
+        abort(404);
+    }
+    if (!is_post()) {
+        $info = usuarios_query(['q' => $u['email']]);
+        $info = array_values(array_filter($info, fn($r) => (int)$r['id'] === (int)$u['id']))[0] ?? null;
+        $inscripciones = DB::all(
+            'SELECT c.id, c.nombre, c.periodo, i.created_at FROM inscripciones i JOIN convocatorias c ON c.id = i.convocatoria_id WHERE i.user_id = ? ORDER BY i.created_at DESC',
+            [$u['id']]
+        );
+        $avances = $info && $info['pid'] ? (int) DB::value('SELECT COUNT(*) FROM avances WHERE proyecto_id = ?', [$info['pid']]) : 0;
+        view('admin/usuario', [
+            'titulo'   => $u['nombres'] . ' ' . $u['apellidos'],
+            'u'        => $u,
+            'info'     => $info,
+            'inscripciones' => $inscripciones,
+            'avances'  => $avances,
+            'esYo'     => (int)$u['id'] === (int)$admin['id'],
+            'convs'    => DB::all("SELECT id, nombre, periodo FROM convocatorias WHERE estado <> 'cerrada' ORDER BY fecha_inicio DESC"),
+        ]);
+        return;
+    }
+
+    $d = [
+        'nombres'   => input('nombres'),
+        'apellidos' => input('apellidos'),
+        'cedula'    => preg_replace('/\D/', '', input('cedula')),
+        'email'     => mb_strtolower(input('email')),
+        'telefono'  => input('telefono'),
+    ];
+    $err = [];
+    if (mb_strlen($d['nombres']) < 2)   $err['nombres'] = 'Obligatorio.';
+    if (mb_strlen($d['apellidos']) < 2) $err['apellidos'] = 'Obligatorio.';
+    if ($u['rol'] === 'estudiante' ? !preg_match('/^\d{10}$/', $d['cedula']) : strlen($d['cedula']) < 6) {
+        $err['cedula'] = $u['rol'] === 'estudiante' ? 'La cédula debe tener 10 dígitos.' : 'Cédula no válida.';
+    } elseif (DB::value('SELECT id FROM users WHERE cedula = ? AND id <> ?', [$d['cedula'], $u['id']])) {
+        $err['cedula'] = 'Otra cuenta ya usa esa cédula.';
+    }
+    if (!filter_var($d['email'], FILTER_VALIDATE_EMAIL)) {
+        $err['email'] = 'Correo no válido.';
+    } elseif (DB::value('SELECT id FROM users WHERE email = ? AND id <> ?', [$d['email'], $u['id']])) {
+        $err['email'] = 'Otra cuenta ya usa ese correo.';
+    }
+    if ($d['telefono'] !== '' && !preg_match('/^[0-9 +()-]{7,20}$/', $d['telefono'])) $err['telefono'] = 'Revisa el número.';
+    if ($err) {
+        set_errors($err);
+        keep_old($d);
+        redirect('admin/usuario', ['id' => $u['id']]);
+    }
+
+    $cambios = [];
+    foreach ($d as $k => $v) {
+        if ((string)($u[$k] ?? '') !== $v) {
+            $cambios[$k] = [(string)($u[$k] ?? ''), $v];
+        }
+    }
+    if (!$cambios) {
+        flash('info', 'No hubo cambios.');
+        redirect('admin/usuario', ['id' => $u['id']]);
+    }
+    DB::tx(function () use ($u, $d, $cambios, $admin) {
+        DB::run('UPDATE users SET nombres = ?, apellidos = ?, cedula = ?, email = ?, telefono = ? WHERE id = ?',
+            [$d['nombres'], $d['apellidos'], $d['cedula'], $d['email'], $d['telefono'] ?: null, $u['id']]);
+        $pid = DB::value("SELECT id FROM proyectos WHERE user_id = ? ORDER BY (estado = 'rechazado'), id DESC LIMIT 1", [$u['id']]);
+        if ($pid) {
+            foreach ($cambios as $campo => [$antes, $despues]) {
+                Cambios::registrar((int)$pid, $campo, $antes, $despues, 'docente', 'aplicado', (int)$admin['id']);
+            }
+        }
+    });
+    flash('ok', 'Datos actualizados.');
+    redirect('admin/usuario', ['id' => $u['id']]);
+}
+
+function usuarioEstado(): void
+{
+    $admin = Auth::requireRole('admin');
+    if (!is_post()) {
+        abort(405);
+    }
+    $u = DB::one('SELECT * FROM users WHERE id = ?', [input_int('id')]);
+    if (!$u) {
+        abort(404);
+    }
+    if ((int)$u['id'] === (int)$admin['id']) {
+        flash('warn', 'No puedes desactivar tu propia cuenta.');
+        redirect('admin/usuario', ['id' => $u['id']]);
+    }
+    $activo = input('accion') === 'activar' ? 1 : 0;
+    DB::run('UPDATE users SET activo = ? WHERE id = ?', [$activo, $u['id']]);
+    flash('ok', $activo
+        ? $u['nombres'] . ' puede volver a ingresar.'
+        : $u['nombres'] . ' ya no puede ingresar. Sus datos, proyecto y bitácora se conservan.');
+    redirect('admin/usuario', ['id' => $u['id']]);
+}
+
+/** Pasa a un estudiante a otra convocatoria (si se inscribió con el código equivocado). */
+function usuarioConvocatoria(): void
+{
+    Auth::requireRole('admin');
+    if (!is_post()) {
+        abort(405);
+    }
+    $u = DB::one("SELECT * FROM users WHERE id = ? AND rol = 'estudiante'", [input_int('id')]);
+    $destino = DB::one('SELECT * FROM convocatorias WHERE id = ?', [input_int('conv')]);
+    if (!$u || !$destino) {
+        abort(404);
+    }
+    $actual = Repo::convocatoriaDe((int)$u['id']);
+    if ($actual && (int)$actual['id'] === (int)$destino['id']) {
+        flash('info', 'Ya está en esa convocatoria.');
+        redirect('admin/usuario', ['id' => $u['id']]);
+    }
+    if ($actual) {
+        $avances = (int) DB::value(
+            'SELECT COUNT(*) FROM avances a JOIN proyectos p ON p.id = a.proyecto_id WHERE p.user_id = ? AND p.convocatoria_id = ?',
+            [$u['id'], $actual['id']]
+        );
+        if ($avances > 0) {
+            flash('warn', "No se puede mover: ya registró {$avances} avance(s) en «{$actual['nombre']}», que pertenecen a ese calendario.");
+            redirect('admin/usuario', ['id' => $u['id']]);
+        }
+    }
+    DB::tx(function () use ($u, $actual, $destino) {
+        if ($actual) {
+            DB::run('DELETE FROM inscripciones WHERE user_id = ? AND convocatoria_id = ?', [$u['id'], $actual['id']]);
+            DB::run('UPDATE proyectos SET convocatoria_id = ? WHERE user_id = ? AND convocatoria_id = ?', [$destino['id'], $u['id'], $actual['id']]);
+        }
+        DB::run('INSERT IGNORE INTO inscripciones (convocatoria_id, user_id) VALUES (?,?)', [$destino['id'], $u['id']]);
+    });
+    flash('ok', $u['nombres'] . ' ahora está en «' . $destino['nombre'] . '»' . ($actual ? ', con su proyecto.' : '.'));
+    redirect('admin/usuario', ['id' => $u['id']]);
+}
+
+function usuariosExportar(): void
+{
+    Auth::requireRole('admin');
+    $rows = usuarios_query(['q' => input('q'), 'conv' => input_int('conv'), 'rol' => input('rol'), 'estado' => input('estado')]);
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="usuarios-' . date('Y-m-d') . '.csv"');
+    $out = fopen('php://output', 'w');
+    fwrite($out, "\xEF\xBB\xBF");
+    fputcsv($out, ['Apellidos', 'Nombres', 'Cédula', 'Correo', 'Teléfono', 'Rol', 'Activo', 'Convocatoria', 'Proyecto', 'Estado del proyecto', 'Registro', 'Último ingreso'], ';');
+    foreach ($rows as $r) {
+        fputcsv($out, [
+            $r['apellidos'], $r['nombres'], $r['cedula'], $r['email'], $r['telefono'],
+            $r['rol'] === 'admin' ? 'Docente' : 'Estudiante', $r['activo'] ? 'Sí' : 'No',
+            $r['conv_nombre'] ? $r['conv_nombre'] . ' · ' . $r['conv_periodo'] : '',
+            $r['titulo'], $r['estado'] ? estado_label($r['estado']) : '',
+            $r['created_at'], $r['ultimo_ingreso'],
+        ], ';');
+    }
+    fclose($out);
+}

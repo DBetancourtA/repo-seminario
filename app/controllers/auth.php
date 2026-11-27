@@ -18,8 +18,13 @@ function login(): void
         keep_old(['email' => $email]);
         redirect('login');
     }
-    $u = DB::one('SELECT * FROM users WHERE email = ? AND activo = 1', [$email]);
-    if (!$u || !password_verify($pass, $u['password_hash'])) {
+    $u = DB::one('SELECT * FROM users WHERE email = ?', [$email]);
+    if ($u && !$u['activo'] && password_verify($pass, $u['password_hash'])) {
+        set_errors(['email' => 'Tu cuenta está desactivada. Habla con tu docente.']);
+        keep_old(['email' => $email]);
+        redirect('login');
+    }
+    if (!$u || !$u['activo'] || !password_verify($pass, $u['password_hash'])) {
         Auth::registerFailure($email);
         set_errors(['email' => 'El correo o la contraseña no coinciden.']);
         keep_old(['email' => $email]);
@@ -27,6 +32,9 @@ function login(): void
     }
     Auth::clearFailures($email);
     Auth::login($u);
+    if (DB::hasColumn('users', 'ultimo_ingreso')) {
+        DB::run('UPDATE users SET ultimo_ingreso = NOW() WHERE id = ?', [$u['id']]);
+    }
     redirect('');
 }
 
@@ -143,4 +151,39 @@ function instalar(): void
     Auth::login(DB::one('SELECT * FROM users WHERE id = ?', [$id]));
     flash('ok', 'Cuenta de docente creada. Por seguridad, pon "instalador_activo" en false en config.php. Ahora crea tu primera convocatoria.');
     redirect('admin/convocatoria');
+}
+
+
+/** Cualquier usuario cambia su propia contraseña. */
+function cambiarClave(): void
+{
+    $u = Auth::requireLogin();
+    if (!is_post()) {
+        view('auth/cambiar_clave', ['titulo' => 'Cambiar contraseña', 'u' => $u]);
+        return;
+    }
+    $actual = (string)($_POST['actual'] ?? '');
+    $nueva  = (string)($_POST['nueva'] ?? '');
+    $nueva2 = (string)($_POST['nueva2'] ?? '');
+    $min = $u['rol'] === 'admin' ? 10 : 8;
+    $err = [];
+    if (!password_verify($actual, $u['password_hash'])) {
+        $err['actual'] = 'La contraseña actual no es correcta.';
+    }
+    if (strlen($nueva) < $min) {
+        $err['nueva'] = "Mínimo {$min} caracteres.";
+    } elseif (password_verify($nueva, $u['password_hash'])) {
+        $err['nueva'] = 'La nueva contraseña debe ser distinta de la actual.';
+    }
+    if ($nueva !== $nueva2) {
+        $err['nueva2'] = 'Las contraseñas no coinciden.';
+    }
+    if ($err) {
+        set_errors($err);
+        redirect('cuenta/clave');
+    }
+    DB::run('UPDATE users SET password_hash = ? WHERE id = ?', [password_hash($nueva, PASSWORD_DEFAULT), $u['id']]);
+    session_regenerate_id(true);
+    flash('ok', 'Contraseña actualizada.');
+    redirect('');
 }

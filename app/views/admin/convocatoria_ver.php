@@ -30,7 +30,7 @@
     <div class="panel empty"><strong>Nadie se ha inscrito todavía</strong>Comparte el código o el enlace de arriba.</div>
   <?php else: ?>
   <div class="table-wrap"><table class="table">
-    <thead><tr><th scope="col">Estudiante</th><th scope="col">Cédula</th><th scope="col">Proyecto</th><th scope="col">Estado</th></tr></thead>
+    <thead><tr><th scope="col">Estudiante</th><th scope="col">Cédula</th><th scope="col">Proyecto</th><th scope="col">Estado</th><th scope="col"><span class="sr-only">Acciones</span></th></tr></thead>
     <tbody>
     <?php foreach ($estudiantes as $s): ?>
       <tr>
@@ -38,6 +38,12 @@
         <td class="mono small"><?= e($s['cedula']) ?></td>
         <td class="title-cell"><?= $s['pid'] ? '<a href="' . e(url('admin/proyecto', ['id' => $s['pid']])) . '">' . e($s['titulo']) . '</a>' : '<span class="muted">Sin registrar</span>' ?></td>
         <td><?php if ($s['estado']): ?><span class="badge badge-<?= e(['ok' => 'ok', 'warn' => 'warn', 'danger' => 'danger', 'neutral' => 'accent'][estado_tono($s['estado'])]) ?>"><?= e(estado_label($s['estado'])) ?></span><?php endif; ?></td>
+        <td style="text-align:right">
+          <form method="post" action="<?= e(url('admin/estudiante/clave')) ?>" data-confirm="¿Generar una contraseña temporal para <?= e($s['nombres']) ?>? La actual dejará de funcionar.">
+            <?= csrf_field() ?><input type="hidden" name="user_id" value="<?= (int)$s['uid'] ?>">
+            <button class="btn btn-sm btn-ghost" type="submit" title="Restablecer contraseña"><?= icon('key', 14) ?> Contraseña</button>
+          </form>
+        </td>
       </tr>
     <?php endforeach; ?>
     </tbody>

@@ -93,6 +93,7 @@ if (!$objs) { $objs = ['']; }
       <label for="repo_url">Repositorio Git <span class="opt">(opcional)</span></label>
       <input class="input mono" id="repo_url" name="repo_url" type="url" placeholder="https://github.com/usuario/proyecto" value="<?= e(old('repo_url', $p['repo_url'] ?? '')) ?>"<?= invalid('repo_url') ?>>
       <?= field_error('repo_url') ?>
+      <?php partial('repo_hint', ['for' => 'repo_url']); ?>
     </div>
   </fieldset>
 

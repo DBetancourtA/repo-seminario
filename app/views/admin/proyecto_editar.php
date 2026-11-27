@@ -88,6 +88,14 @@ $val = fn($c) => old($c, $valores[$c]);
 </form>
 
 <aside>
+  <div class="panel panel-pad" style="margin-bottom:24px;display:grid;gap:10px">
+    <h2 style="font-size:15px">Contraseña del estudiante</h2>
+    <p class="help">Genera una contraseña temporal si la olvidó. Se mostrará una sola vez para que se la dictes.</p>
+    <form method="post" action="<?= e(url('admin/estudiante/clave')) ?>" data-confirm="¿Generar una contraseña temporal para <?= e($p['nombres']) ?>? La actual dejará de funcionar.">
+      <?= csrf_field() ?><input type="hidden" name="user_id" value="<?= (int)$p['user_id'] ?>">
+      <button class="btn" type="submit"><?= icon('key', 16) ?> Restablecer contraseña</button>
+    </form>
+  </div>
   <div class="section-head"><h2>Capturas</h2><span class="meta"><?= count($capturas) ?></span></div>
   <?php if (!$capturas): ?><p class="muted small">Sin capturas.</p><?php else: ?>
   <div class="shots">

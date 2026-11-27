@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
   telefono      VARCHAR(20)  NULL,
   password_hash VARCHAR(255) NOT NULL,
   activo        TINYINT(1)   NOT NULL DEFAULT 1,
+  ultimo_ingreso DATETIME    NULL,
   created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_users_email (email),
   UNIQUE KEY uq_users_cedula (cedula)

@@ -25,7 +25,7 @@ $quien = function (array $c): string {
         <?php if ($txt): ?><span class="badge <?= $cls ?>"><?= e($txt) ?></span><?php endif; ?>
         <span class="when"><?= e($quien($c)) ?> · <?= e(fecha_hora($c['created_at'])) ?></span>
       </div>
-      <?php if ($c['campo'] === 'capturas'): ?>
+      <?php if (in_array($c['campo'], ['capturas', 'clave'], true)): ?>
         <p class="small"><?= e($c['valor_nuevo']) ?></p>
       <?php else: ?>
         <div class="diff">

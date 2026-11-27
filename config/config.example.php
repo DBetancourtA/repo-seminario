@@ -12,6 +12,8 @@ return [
         'nombre'       => 'Seminario de Titulación',
         'institucion'  => 'Instituto Superior Tecnológico',
         'carrera'      => 'Tecnología Superior en Desarrollo de Software',
+        // Correo al que los estudiantes deben dar acceso si su repositorio es privado
+        'correo_docente' => 'dibetancourt4@itb.edu.ec',
         'zona_horaria' => 'America/Guayaquil',
         // URL pública completa, sin barra final. Vacío = se detecta sola.
         'url'          => '',

@@ -65,7 +65,12 @@ Da permisos de escritura a `storage/` para el usuario del servidor web (`chown -
 **Cambios a la ficha después de aprobada**
 - *Antes de la semana de congelamiento* (por defecto la 3; se configura en cada convocatoria): el estudiante, desde *Mi proyecto → Ajustar ficha*, puede **completar** campos que dejó vacíos (se guardan al instante) y **solicitar** cambios en campos ya llenos, con un motivo. Tú los aceptas o los rechazas desde la ficha del proyecto, el filtro *Cambios pendientes* o el tablero. El repositorio y las capturas son libres.
 - *Desde la semana de congelamiento*: la ficha queda cerrada para el estudiante y solo tú editas (*Editar ficha*), incluidos los datos personales (cédula, correo).
+- El **enlace del repositorio** se puede actualizar siempre, incluso con la ficha cerrada. La plataforma revisa si el repositorio de GitHub es público; si no lo es, le pide al estudiante que agregue el correo del docente como colaborador.
 - Todo queda en el **registro de cambios** con el valor anterior, el nuevo, quién lo hizo y el motivo. El estudiante también lo ve.
+
+**Usuarios:** en *Usuarios* (menú de docente) ves todas las cuentas, con buscador y filtros por convocatoria, rol y estado. Desde la ficha de cada uno puedes editar sus datos, restablecer su contraseña, cambiarlo de convocatoria (solo si aún no registra avances) y desactivar o reactivar su cuenta. Desactivar impide el ingreso, pero conserva el proyecto y la bitácora. No hay opción de eliminar, a propósito.
+
+**Contraseñas:** cada usuario cambia la suya con el ícono de la llave, en la barra superior. Si un estudiante la olvida, el docente genera una contraseña temporal desde *Convocatorias → la convocatoria → Estudiantes inscritos → Contraseña*, o desde *Editar ficha* del proyecto. La temporal se muestra una sola vez y el restablecimiento queda en el registro de cambios.
 
 **Modo oscuro:** el botón de sol/luna, en la barra superior y en las pantallas de acceso, cambia entre modo claro y oscuro. La elección se guarda en el navegador de cada usuario; si nunca eligió, se usa el modo del sistema operativo. Los colores están definidos como variables en `public/assets/css/app.css` (bloque `:root[data-theme="dark"]`).
 
@@ -90,6 +95,7 @@ docs/          ARQUITECTURA.md
 | Clave | Para qué sirve |
 |---|---|
 | `app.institucion`, `app.carrera` | Aparecen en la interfaz y en el PDF |
+| `app.correo_docente` | Correo al que los estudiantes deben dar acceso si su repositorio de GitHub es privado |
 | `app.url` | URL pública. Déjala vacía para que se detecte sola |
 | `app.max_mb` | Peso máximo por imagen (por defecto 5) |
 | `app.min_actividad` | Mínimo de caracteres en la descripción de cada avance |
@@ -97,8 +103,7 @@ docs/          ARQUITECTURA.md
 | `app.debug` | Ponla en `true` solo en local, para ver los errores |
 
 ## 6. Actualizar una instalación anterior
-Si ya tenías la plataforma instalada antes de la función de cambios, ejecuta una sola vez `database/migracion_001_cambios.sql` en phpMyAdmin. En una instalación nueva no hace falta, porque `schema.sql` ya lo incluye.
+Si ya tenías la plataforma instalada, ejecuta en phpMyAdmin, una sola vez y en orden, las migraciones que aún no hayas aplicado: `database/migracion_001_cambios.sql` (registro de cambios) y `database/migracion_002_usuarios.sql` (último ingreso). En una instalación nueva no hace falta, porque `schema.sql` ya lo incluye.
 
 ## 7. Respaldo
 Haz respaldo de la base (`mysqldump seminario > respaldo.sql`) y de la carpeta `storage/uploads/`.
-# repo-seminario

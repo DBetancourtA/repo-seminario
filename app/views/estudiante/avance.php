@@ -46,6 +46,7 @@ $tipo = old('tipo', $a['tipo'] ?? 'codigo');
       <label for="enlace">Commit o enlace <span class="opt">(opcional)</span></label>
       <input class="input mono" id="enlace" name="enlace" type="url" placeholder="https://github.com/…/commit/…" value="<?= e(old('enlace', $a['enlace'] ?? '')) ?>"<?= invalid('enlace') ?>>
       <?= field_error('enlace') ?>
+      <p class="repo-status" data-repo-for="enlace" data-correo="<?= e((string)cfg('app.correo_docente', '')) ?>" role="status" aria-live="polite" hidden></p>
     </div>
   </div>
 

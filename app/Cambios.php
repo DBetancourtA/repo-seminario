@@ -33,7 +33,7 @@ final class Cambios
 
     public static function label(string $campo): string
     {
-        return self::CAMPOS_PROYECTO[$campo]['label'] ?? self::CAMPOS_ESTUDIANTE[$campo] ?? ($campo === 'capturas' ? 'Capturas' : $campo);
+        return self::CAMPOS_PROYECTO[$campo]['label'] ?? self::CAMPOS_ESTUDIANTE[$campo] ?? ($campo === 'capturas' ? 'Capturas' : ($campo === 'clave' ? 'Contraseña' : $campo));
     }
 
     /** ¿El estudiante puede ajustar la ficha ahora mismo? */
@@ -41,6 +41,12 @@ final class Cambios
     {
         return in_array($p['estado'], ['aprobado', 'tecnologias_definidas', 'en_desarrollo'], true)
             && !Calendar::isFrozen($conv);
+    }
+
+    /** El enlace del repositorio se puede actualizar siempre que el proyecto esté aprobado y en curso, aun con la ficha congelada. */
+    public static function repoEditable(array $p): bool
+    {
+        return in_array($p['estado'], ['aprobado', 'tecnologias_definidas', 'en_desarrollo'], true);
     }
 
     /** Valor actual de un campo como texto (los objetivos, uno por línea). */

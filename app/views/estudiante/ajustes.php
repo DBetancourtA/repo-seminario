@@ -50,6 +50,7 @@ $val = fn($campo) => old($campo, $valores[$campo]);
           <?php if ($campo === 'objetivos'): ?><p class="help">Un objetivo por línea, hasta 6.</p><?php endif; ?>
         <?php endif; ?>
         <?= field_error($campo) ?>
+        <?php if ($campo === 'repo_url') partial('repo_hint', ['for' => $id]); ?>
         <?php if ($modo === 'solicitud'): ?>
           <div class="field motivo" data-for="<?= $id ?>"<?= isset($err['motivo_' . $campo]) || old('motivo_' . $campo) !== '' ? '' : ' hidden' ?>>
             <label for="m-<?= $campo ?>">¿Por qué necesitas este cambio?</label>

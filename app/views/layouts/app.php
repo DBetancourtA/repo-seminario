@@ -3,7 +3,7 @@ $u = Auth::user();
 $route = trim((string)($_GET['r'] ?? ''), '/');
 $isAdmin = $u && $u['rol'] === 'admin';
 $navItems = $isAdmin
-    ? ['admin' => 'Tablero', 'admin/proyectos' => 'Proyectos', 'admin/convocatorias' => 'Convocatorias', 'admin/tecnologias' => 'Tecnologías']
+    ? ['admin' => 'Tablero', 'admin/proyectos' => 'Proyectos', 'admin/convocatorias' => 'Convocatorias', 'admin/usuarios' => 'Usuarios', 'admin/tecnologias' => 'Tecnologías']
     : ['panel' => 'Mi seminario', 'proyecto' => 'Mi proyecto', 'tecnologias' => 'Tecnologías'];
 $active = function (string $key) use ($route): bool {
     if ($route === $key) return true;
@@ -12,6 +12,7 @@ $active = function (string $key) use ($route): bool {
 if (in_array($route, ['avance', 'semana'], true)) { $activeKey = 'panel'; }
 if (in_array($route, ['admin/proyecto'], true)) { $activeKey = 'admin/proyectos'; }
 if (in_array($route, ['admin/convocatoria', 'admin/convocatoria/ver'], true)) { $activeKey = 'admin/convocatorias'; }
+if (in_array($route, ['admin/usuario'], true)) { $activeKey = 'admin/usuarios'; }
 ?><!doctype html>
 <html lang="es">
 <head>
@@ -54,6 +55,7 @@ if (in_array($route, ['admin/convocatoria', 'admin/convocatoria/ver'], true)) { 
     </nav>
     <div class="user">
       <button class="linkbtn theme-toggle" type="button" aria-label="Cambiar a modo oscuro" title="Cambiar modo claro / oscuro"><span class="icon-moon"><?= icon('moon') ?></span><span class="icon-sun"><?= icon('sun') ?></span></button>
+      <a class="linkbtn" href="<?= e(url('cuenta/clave')) ?>" aria-label="Cambiar mi contraseña" title="Cambiar mi contraseña"><?= icon('key') ?></a>
       <span class="avatar" aria-hidden="true"><?= e(initials($u['nombres'], $u['apellidos'])) ?></span>
       <span class="user-name"><?= e(explode(' ', $u['nombres'])[0] . ' ' . explode(' ', $u['apellidos'])[0]) ?><?= $isAdmin ? ' · Docente' : '' ?></span>
       <form method="post" action="<?= e(url('salir')) ?>">
@@ -68,6 +70,16 @@ if (in_array($route, ['admin/convocatoria', 'admin/convocatoria/ver'], true)) { 
 </header>
 <main id="main" class="page">
   <?php partial('flashes'); ?>
+  <?php if (!empty($_SESSION['clave_temporal']) && $isAdmin): $ct = $_SESSION['clave_temporal']; unset($_SESSION['clave_temporal']); ?>
+    <div class="temp-pass" role="alert">
+      <div>
+        <strong>Contraseña temporal de <?= e($ct['nombre']) ?></strong>
+        <p>Díctasela o envíasela. Entra con <span class="mono"><?= e($ct['email']) ?></span> y debe cambiarla con el ícono de la llave. Esta contraseña no se volverá a mostrar.</p>
+      </div>
+      <div class="temp-pass-code"><span class="mono" id="temp-pass"><?= e($ct['clave']) ?></span>
+        <button class="btn btn-sm" type="button" data-copy="<?= e($ct['clave']) ?>">Copiar</button></div>
+    </div>
+  <?php endif; ?>
   <?= $content ?>
 </main>
 <script src="<?= e(asset('js/app.js')) ?>" defer></script>

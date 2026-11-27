@@ -51,6 +51,20 @@ final class DB
         return (int) self::pdo()->lastInsertId();
     }
 
+    /** ¿Existe la columna? (para que el código funcione antes y después de una migración) */
+    public static function hasColumn(string $table, string $column): bool
+    {
+        static $cache = [];
+        $k = $table . '.' . $column;
+        if (!array_key_exists($k, $cache)) {
+            $cache[$k] = (bool) self::value(
+                'SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+                [$table, $column]
+            );
+        }
+        return $cache[$k];
+    }
+
     public static function tx(callable $fn)
     {
         $pdo = self::pdo();

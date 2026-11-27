@@ -17,13 +17,29 @@
 <?php partial('workflow', ['p' => $p, 'conv' => $conv, 'actual' => Calendar::currentWeek((int)$conv['id'])]); ?>
 
 <?php if (!$puedeAjustar && in_array($p['estado'], ['aprobado', 'tecnologias_definidas', 'en_desarrollo', 'finalizado'], true) && $congela && date('Y-m-d') >= $congela): ?>
-  <div class="note" style="margin-bottom:24px"><strong>Ficha cerrada</strong>Desde la semana <?= (int)$conv['semana_congelamiento'] ?> solo el docente puede modificar la ficha del proyecto. Si necesitas una corrección, pídesela en clase.</div>
+  <div class="note" style="margin-bottom:24px"><strong>Ficha cerrada</strong>Desde la semana <?= (int)$conv['semana_congelamiento'] ?> solo el docente puede modificar la ficha del proyecto; si necesitas una corrección, pídesela en clase. La excepción es el <a href="#repositorio">enlace del repositorio</a>, que puedes actualizar cuando quieras.</div>
 <?php endif; ?>
 
 <div class="grid-2">
   <section aria-labelledby="ficha">
     <div class="section-head"><h2 id="ficha">Ficha</h2></div>
     <?php partial('ficha', compact('p', 'objetivos', 'capturas', 'tecs')); ?>
+
+    <?php if (Cambios::repoEditable($p)): ?>
+    <div class="section" id="repositorio">
+      <div class="section-head"><h2>Repositorio del proyecto</h2><span class="meta">Puedes actualizarlo en cualquier momento</span></div>
+      <form method="post" action="<?= e(url('proyecto/repositorio')) ?>" class="form" style="gap:8px" novalidate>
+        <?= csrf_field() ?>
+        <label class="sr-only" for="repo_url">Enlace del repositorio</label>
+        <div class="repo-inline">
+          <input class="input mono" id="repo_url" name="repo_url" type="url" placeholder="https://github.com/usuario/proyecto" value="<?= e(old('repo_url', $p['repo_url'] ?? '')) ?>"<?= invalid('repo_url') ?>>
+          <button class="btn" type="submit">Guardar enlace</button>
+        </div>
+        <?= field_error('repo_url') ?>
+        <?php partial('repo_hint', ['for' => 'repo_url']); ?>
+      </form>
+    </div>
+    <?php endif; ?>
 
     <?php if ($cambios): ?>
     <div class="section">

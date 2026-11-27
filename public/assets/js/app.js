@@ -153,6 +153,60 @@
     sync();
   });
 
+  // Repositorio de GitHub: ¿público o privado?
+  const repoCache = {};
+  const checkRepo = (url) => {
+    const m = /^https?:\/\/(?:www\.)?github\.com\/([^\/\s]+)\/([^\/\s#?]+)/i.exec(url.trim());
+    if (!m) return Promise.resolve(null);
+    const key = (m[1] + '/' + m[2].replace(/\.git$/i, '')).toLowerCase();
+    if (!repoCache[key]) {
+      repoCache[key] = fetch('https://api.github.com/repos/' + key, { headers: { Accept: 'application/vnd.github+json' } })
+        .then((r) => (r.status === 200 ? 'publico' : r.status === 404 ? 'privado' : null))
+        .catch(() => null);
+    }
+    return repoCache[key];
+  };
+  const setupRepoField = (status, field) => {
+    const correo = status.dataset.correo || 'tu docente';
+    let timer = null;
+    const run = () => {
+      const url = field.value;
+      checkRepo(url).then((res) => {
+        if (field.value !== url) return;
+        status.classList.remove('is-ok', 'is-warn');
+        if (res === 'publico') {
+          status.innerHTML = '<span aria-hidden="true">✓</span> Repositorio público: tu docente puede verlo.';
+          status.classList.add('is-ok');
+          status.hidden = false;
+        } else if (res === 'privado') {
+          status.textContent = '';
+          const b = document.createElement('strong');
+          b.textContent = 'No se puede ver públicamente. ';
+          status.append(b, document.createTextNode('Es privado o la dirección está mal escrita. Si es privado, agrega a '));
+          const c = document.createElement('span');
+          c.className = 'mono';
+          c.textContent = correo;
+          status.append(c, document.createTextNode(' como colaborador (Settings → Collaborators → Add people).'));
+          status.classList.add('is-warn');
+          status.hidden = false;
+        } else {
+          status.hidden = true;
+        }
+      });
+    };
+    field.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(run, 700); });
+    if (field.value) run();
+  };
+  document.querySelectorAll('.repo-hint[data-repo-for]').forEach((box) => {
+    const field = document.getElementById(box.dataset.repoFor);
+    const status = box.querySelector('.repo-status');
+    if (field && status) { status.dataset.correo = box.dataset.correo; setupRepoField(status, field); }
+  });
+  document.querySelectorAll('p.repo-status[data-repo-for]').forEach((status) => {
+    const field = document.getElementById(status.dataset.repoFor);
+    if (field) setupRepoField(status, field);
+  });
+
   // Confirmación para acciones destructivas
   document.querySelectorAll('form[data-confirm]').forEach((f) => {
     f.addEventListener('submit', (e) => {

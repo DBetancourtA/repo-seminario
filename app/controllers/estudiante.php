@@ -294,6 +294,36 @@ function ajustes(): void
     redirect('proyecto');
 }
 
+/** Actualiza solo el enlace del repositorio (permitido aun con la ficha congelada). */
+function repositorio(): void
+{
+    if (!is_post()) {
+        abort(405);
+    }
+    [$u, $conv, $p] = contexto_estudiante();
+    if (!$p || !Cambios::repoEditable($p)) {
+        abort(403, 'El repositorio se actualiza cuando el proyecto está aprobado y en curso.');
+    }
+    $pid = (int)$p['id'];
+    $actual = Cambios::valor($pid, 'repo_url');
+    $nuevo = Cambios::normalizar('repo_url', (string)input('repo_url'));
+    if ($nuevo === $actual) {
+        flash('info', 'El enlace no cambió.');
+        redirect('proyecto');
+    }
+    if ($m = Cambios::validar('repo_url', $nuevo, $pid)) {
+        set_errors(['repo_url' => $m]);
+        keep_old(['repo_url' => $nuevo]);
+        redirect('proyecto');
+    }
+    DB::tx(function () use ($pid, $actual, $nuevo, $u) {
+        Cambios::aplicar($pid, 'repo_url', $nuevo);
+        Cambios::registrar($pid, 'repo_url', $actual, $nuevo, 'completado', 'aplicado', (int)$u['id']);
+    });
+    flash('ok', $nuevo === '' ? 'Enlace del repositorio eliminado.' : 'Enlace del repositorio actualizado.');
+    redirect('proyecto');
+}
+
 function cambioCancelar(): void
 {
     if (!is_post()) {
